@@ -3,7 +3,7 @@ import BasePlugin from './base-plugin.js';
 
 export default class KothSeedingPlugin extends BasePlugin {
   static get description() {
-    return 'Plugin to set fixed KOTH settings when player count is below 50';
+    return 'Plugin to scale KOTH settings based on player count below 50';
   }
 
   static get defaultEnabled() {
@@ -55,8 +55,7 @@ export default class KothSeedingPlugin extends BasePlugin {
       return;
     }
 
-    // Use player count as the "level" to force updates when player count changes
-    const currentLevel = playerCount;
+    const currentLevel = this.determineLevel(playerCount);
     console.log(`[KothSeedingPlugin] Current level: ${currentLevel}, Last level: ${this.lastLevel}`);
     
     if (currentLevel === this.lastLevel) {
@@ -86,7 +85,7 @@ export default class KothSeedingPlugin extends BasePlugin {
         return;
       }
       
-      const newSettings = this.getLevelSettings();
+      const newSettings = this.getLevelSettings(currentLevel);
       console.log(`[KothSeedingPlugin] New settings: ${JSON.stringify(newSettings, null, 2)}`);
       
       Object.assign(config.settings, newSettings);
@@ -97,7 +96,7 @@ export default class KothSeedingPlugin extends BasePlugin {
       
       this.lastLevel = currentLevel;
 
-      const msg = `[KOTH] Zone and Economy updated! - ${playerCount} players`;
+      const msg = `[KOTH] Zone and Economy updated! - ${playerCount} players (Level ${currentLevel})`;
       console.log(`[${new Date().toISOString()}] ${msg}`);
       await this.server.rcon.broadcast(msg);
       console.log('[KothSeedingPlugin] Broadcast sent');
@@ -107,13 +106,21 @@ export default class KothSeedingPlugin extends BasePlugin {
     }
   }
 
-  getLevelSettings() {
+  determineLevel(playerCount) {
+    const level = Math.min(Math.max(1, Math.ceil(playerCount / 5)), 10);
+    console.log(`[KothSeedingPlugin] Determined level: ${level} for player count: ${playerCount}`);
+    return level;
+  }
+
+  getLevelSettings(level) {
+    const lerp = (min, max) => min + (max - min) * (level - 1) / 9;
+
     const settings = {
       "zone": {
-        "move interval": 300,
-        "move fraction": "0.5",
-        "radius multiplier": "1",
-        "prio radius multiplier": "1",
+        "move interval": Math.round(lerp(60, 300)),
+        "move fraction": lerp(1, 0.5).toFixed(2),
+        "radius multiplier": lerp(0.5, 1).toFixed(2),
+        "prio radius multiplier": lerp(0.25, 1).toFixed(2),
         "half height": 10000, // Static value
         "reward update interval": 20, // Keep original value
         "vehicle can capture": false,
@@ -122,32 +129,32 @@ export default class KothSeedingPlugin extends BasePlugin {
       "rewards": [
         {
           "name": "Enemy Killed",
-          "xp": 100,
-          "$": 100
+          "xp": Math.round(lerp(200, 100)),
+          "$": Math.round(lerp(200, 100))
         },
         {
           "name": "Priority Offensive",
-          "xp": 200,
-          "$": 200
+          "xp": Math.round(lerp(600, 200)),
+          "$": Math.round(lerp(600, 200))
         },
         {
           "name": "Priority Defensive",
-          "xp": 200,
-          "$": 200
+          "xp": Math.round(lerp(600, 200)),
+          "$": Math.round(lerp(600, 200))
         },
         {
           "name": "Objective Offensive",
-          "xp": 100,
-          "$": 100
+          "xp": Math.round(lerp(25, 100)),
+          "$": Math.round(lerp(25, 100))
         },
         {
           "name": "Objective Defensive",
-          "xp": 100,
-          "$": 100
+          "xp": Math.round(lerp(25, 100)),
+          "$": Math.round(lerp(25, 100))
         }
       ]
     };
-    console.log('[KothSeedingPlugin] Generated fixed settings');
+    console.log(`[KothSeedingPlugin] Generated settings for level ${level}`);
     return settings;
   }
 }
