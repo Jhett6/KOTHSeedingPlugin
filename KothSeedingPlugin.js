@@ -1,7 +1,8 @@
 import { promises as fs } from 'fs';
-import BasePlugin from './base-plugin.js';
+import path from 'path';
+import DiscordBasePlugin from './discord-base-plugin.js';
 
-export default class KothSeedingPlugin extends BasePlugin {
+export default class KothSeedingPlugin extends DiscordBasePlugin {
   static get description() {
     return 'Plugin to scale KOTH settings based on player count below 50 using PlayerList.json';
   }
@@ -23,7 +24,8 @@ export default class KothSeedingPlugin extends BasePlugin {
     super(server, options, connectors);
     this.lastPlayerCount = null;
     this.configPath = options.configPath;
-    this.playerListPath = '/home/container/SquadGame/Saved/Koth/PlayerList.json'; // Adjust if needed
+    // Derive PlayerList.json path from configPath
+    this.playerListPath = path.join(path.dirname(this.configPath), 'PlayerList.json');
     this.updateInterval = 90 * 1000; // 90 seconds
     console.log(`[KothSeedingPlugin] Initialized with configPath: ${this.configPath}, playerListPath: ${this.playerListPath}`);
   }
@@ -55,8 +57,8 @@ export default class KothSeedingPlugin extends BasePlugin {
   async getPlayerCount() {
     try {
       console.log(`[KothSeedingPlugin] Checking PlayerList file: ${this.playerListPath}`);
-      await fs.access(this.playerListPath);
-      console.log('[KothSeedingPlugin] PlayerList file exists');
+      await fs.access(this.playerListPath, fs.constants.R_OK);
+      console.log('[KothSeedingPlugin] PlayerList file exists and is readable');
 
       const rawData = await fs.readFile(this.playerListPath);
       const content = rawData.toString()
@@ -65,6 +67,7 @@ export default class KothSeedingPlugin extends BasePlugin {
         .trim();
 
       console.log(`[KothSeedingPlugin] PlayerList content read (length: ${content.length})`);
+      console.log(`[KothSeedingPlugin] PlayerList content: ${content}`);
       if (!content.startsWith('{') && !content.startsWith('[')) {
         console.error('[KothSeedingPlugin Error] Invalid PlayerList JSON: File does not start with { or [');
         return 0;
@@ -85,6 +88,11 @@ export default class KothSeedingPlugin extends BasePlugin {
       return playerCount;
     } catch (error) {
       console.error(`[KothSeedingPlugin Error] Failed to read PlayerList: ${error.message}`);
+      if (error.code === 'ENOENT') {
+        console.error('[KothSeedingPlugin Error] PlayerList.json does not exist');
+      } else if (error.code === 'EACCES') {
+        console.error('[KothSeedingPlugin Error] Permission denied for PlayerList.json');
+      }
       return 0;
     }
   }
@@ -109,8 +117,8 @@ export default class KothSeedingPlugin extends BasePlugin {
     try {
       console.log(`[KothSeedingPlugin] Checking file existence: ${this.configPath}`);
       try {
-        await fs.access(this.configPath);
-        console.log('[KothSeedingPlugin] File exists');
+        await fs.access(this.configPath, fs.constants.R_OK | fs.constants.W_OK);
+        console.log('[KothSeedingPlugin] File exists and is readable/writable');
       } catch (error) {
         console.error(`[KothSeedingPlugin Error] File not accessible: ${error.message}`);
         return;
@@ -185,18 +193,18 @@ export default class KothSeedingPlugin extends BasePlugin {
     const lerp = (min, max) => min + (max - min) * (level - 1) / 9;
 
     const settings = {
-      "msv timer": Math.round(lerp(0, 90)),
+      "msv timer": 180,
       "economy": {
-        "$ multiplier": lerp(2, 1).toFixed(2),
-        "xp multiplier": lerp(2, 1).toFixed(2)
+        "$ multiplier": 1.5,
+        "xp multiplier": 1
       },
       "zone": {
-        "move interval": Math.round(lerp(60, 300)),
+        "move interval": Math.round(lerp(120, 300)),
         "move fraction": lerp(1, 0.5).toFixed(2),
-        "radius multiplier": lerp(0.5, 1).toFixed(2),
-        "prio radius multiplier": lerp(0.25, 1).toFixed(2),
+        "radius multiplier": lerp(0.6, 1).toFixed(2),
+        "prio radius multiplier": lerp(0.3, 1).toFixed(2),
         "half height": 30000,
-        "reward update interval": 30,
+        "reward update interval": 15,
         "vehicle can capture": false,
         "prio vehicle can capture": true
       },
