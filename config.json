@@ -1,10 +1,5 @@
     {
       "plugin": "KothSeedingPlugin",
       "enabled": true,
-      "options": {
-        "updateInterval": 120000,
-        "configPath": "/home/container/SquadGame/Saved/Koth/ServerSettings.json"
-      }
+      "configPath": "./SquadGame/Saved/KOTH/ServerSettings.json"
     }
-  
-
