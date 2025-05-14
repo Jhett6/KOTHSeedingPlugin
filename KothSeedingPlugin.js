@@ -16,6 +16,11 @@ export default class KothSeedingPlugin extends DiscordBasePlugin {
       configPath: {
         required: true,
         description: 'Path to ServerSettings.json'
+      },
+      excludedLayers: {
+        required: false,
+        description: 'Array of layer names where the plugin should not be active',
+        default: []
       }
     };
   }
@@ -24,10 +29,11 @@ export default class KothSeedingPlugin extends DiscordBasePlugin {
     super(server, options, connectors);
     this.lastPlayerCount = null;
     this.configPath = options.configPath;
+    this.excludedLayers = options.excludedLayers || [];
     // Derive PlayerList.json path from configPath
     this.playerListPath = path.join(path.dirname(this.configPath), 'PlayerList.json');
     this.updateInterval = 90 * 1000; // 90 seconds
-    console.log(`[KothSeedingPlugin] Initialized with configPath: ${this.configPath}, playerListPath: ${this.playerListPath}`);
+    console.log(`[KothSeedingPlugin] Initialized with configPath: ${this.configPath}, playerListPath: ${this.playerListPath}, excludedLayers: ${JSON.stringify(this.excludedLayers)}`);
   }
 
   async mount() {
@@ -52,6 +58,17 @@ export default class KothSeedingPlugin extends DiscordBasePlugin {
   async unmount() {
     console.log('[KothSeedingPlugin] Unmounting plugin...');
     clearInterval(this.updateIntervalId);
+  }
+
+  async getCurrentLayer() {
+    try {
+      const layerInfo = await this.server.rcon.execute('ShowCurrentLayer');
+      console.log(`[KothSeedingPlugin] Current layer: ${layerInfo}`);
+      return layerInfo.trim();
+    } catch (error) {
+      console.error(`[KothSeedingPlugin Error] Failed to get current layer: ${error.message}`);
+      return null;
+    }
   }
 
   async getPlayerCount() {
@@ -98,6 +115,14 @@ export default class KothSeedingPlugin extends DiscordBasePlugin {
   }
 
   async updateSettings() {
+    // Check current layer
+    const currentLayer = await this.getCurrentLayer();
+    if (currentLayer && this.excludedLayers.includes(currentLayer)) {
+      console.log(`[KothSeedingPlugin] Current layer (${currentLayer}) is in excludedLayers, skipping update`);
+      this.lastPlayerCount = null; // Reset to ensure update when layer changes
+      return;
+    }
+
     const playerCount = await this.getPlayerCount();
     console.log(`[KothSeedingPlugin] Player count: ${playerCount}`);
     
