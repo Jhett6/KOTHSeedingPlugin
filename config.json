@@ -2,4 +2,5 @@
       "plugin": "KothSeedingPlugin",
       "enabled": true,
       "configPath": "./SquadGame/Saved/KOTH/ServerSettings.json"
+      "excludedLayers": ["LayerName1", "LayerName2"]
     }
