@@ -24,7 +24,6 @@ export default class KothSeedingPlugin extends DiscordBasePlugin {
     super(server, options, connectors);
     this.lastPlayerCount = null;
     this.configPath = options.configPath;
-    // Derive PlayerList.json path from configPath
     this.playerListPath = path.join(path.dirname(this.configPath), 'PlayerList.json');
     this.updateInterval = 90 * 1000; // 90 seconds
     console.log(`[KothSeedingPlugin] Initialized with configPath: ${this.configPath}, playerListPath: ${this.playerListPath}`);
@@ -32,17 +31,14 @@ export default class KothSeedingPlugin extends DiscordBasePlugin {
 
   async mount() {
     console.log('[KothSeedingPlugin] Mounting plugin...');
-    // Test RCON broadcast
     try {
       await this.server.rcon.broadcast('[KothSeedingPlugin] Plugin mounted');
       console.log('[KothSeedingPlugin] Test RCON broadcast sent');
     } catch (error) {
       console.error(`[KothSeedingPlugin Error] Test RCON broadcast failed: ${error.message}`);
     }
-    // Run initial check on startup
     console.log('[KothSeedingPlugin] Running initial updateSettings...');
     await this.updateSettings();
-    // Set interval for periodic checks
     this.updateIntervalId = setInterval(() => {
       console.log('[KothSeedingPlugin] Running updateSettings...');
       this.updateSettings();
@@ -97,18 +93,54 @@ export default class KothSeedingPlugin extends DiscordBasePlugin {
     }
   }
 
+  // Helper function for deep merging objects
+  deepMerge(target, source) {
+    for (const key in source) {
+      if (Object.prototype.hasOwnProperty.call(source, key)) {
+        if (key === 'rewards' && Array.isArray(source[key]) && Array.isArray(target[key])) {
+          // Special handling for rewards array: merge by 'name'
+          const newRewards = [...target[key]]; // Clone target rewards
+          source[key].forEach(sourceReward => {
+            if (sourceReward.name) {
+              const targetIndex = newRewards.findIndex(r => r.name === sourceReward.name);
+              if (targetIndex >= 0) {
+                // Update existing reward
+                newRewards[targetIndex] = { ...newRewards[targetIndex], ...sourceReward };
+              } else {
+                // Add new reward
+                newRewards.push({ ...sourceReward });
+              }
+            }
+          });
+          target[key] = newRewards;
+        } else if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+          // If the key is an object (but not an array), recurse
+          target[key] = target[key] || {};
+          this.deepMerge(target[key], source[key]);
+        } else if (Array.isArray(source[key])) {
+          // For other arrays, replace entirely
+          target[key] = source[key].map(item =>
+            typeof item === 'object' && !Array.isArray(item) ? { ...item } : item
+          );
+        } else {
+          // If the key is a primitive, overwrite it
+          target[key] = source[key];
+        }
+      }
+    }
+    return target;
+  }
+
   async updateSettings() {
     const playerCount = await this.getPlayerCount();
     console.log(`[KothSeedingPlugin] Player count: ${playerCount}`);
     
-    // Only apply settings if player count is below 50
     if (playerCount >= 50 || playerCount == null) {
       console.log(`[KothSeedingPlugin] Player count >= 50 or invalid (${playerCount}), skipping update`);
-      this.lastPlayerCount = null; // Reset to ensure update when count drops below 50
+      this.lastPlayerCount = null;
       return;
     }
 
-    // Use player count directly to ensure updates on any change
     if (playerCount === this.lastPlayerCount) {
       console.log('[KothSeedingPlugin] Player count unchanged, skipping update');
       return;
@@ -156,8 +188,9 @@ export default class KothSeedingPlugin extends DiscordBasePlugin {
       const newSettings = this.getLevelSettings(currentLevel);
       console.log(`[KothSeedingPlugin] New settings: ${JSON.stringify(newSettings, null, 2)}`);
       
-      Object.assign(config.settings, newSettings);
-      console.log('[KothSeedingPlugin] Settings merged into config');
+      // Deep merge new settings into existing config.settings
+      this.deepMerge(config.settings, newSettings);
+      console.log('[KothSeedingPlugin] Settings deep merged into config');
       
       try {
         await fs.writeFile(this.configPath, JSON.stringify(config, null, '\t') + '\n');
@@ -199,7 +232,7 @@ export default class KothSeedingPlugin extends DiscordBasePlugin {
         "xp multiplier": 1
       },
       "zone": {
-        "move interval": Math.round(lerp(120, 300)),
+        "move interval": 300,
         "move fraction": lerp(1, 0.5).toFixed(2),
         "radius multiplier": lerp(0.6, 1).toFixed(2),
         "prio radius multiplier": lerp(0.3, 1).toFixed(2),
@@ -231,8 +264,8 @@ export default class KothSeedingPlugin extends DiscordBasePlugin {
         },
         {
           "name": "Objective Defensive",
-          "xp": Math.round(lerp(25, 100)),
-          "$": Math.round(lerp(25, 100))
+          "xp": Math.round(lerp(30, 100)),
+          "$": Math.round(lerp(30, 100))
         }
       ]
     };
