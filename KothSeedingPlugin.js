@@ -202,7 +202,7 @@ export default class KothSeedingPlugin extends DiscordBasePlugin {
       
       this.lastPlayerCount = playerCount;
 
-      const msg = `[KOTH] Zone and Economy updated! - ${playerCount} players (Level ${currentLevel})`;
+      const msg = `[KOTH] Seeding Economy updated! - ${playerCount} players (Level ${currentLevel})`;
       console.log(`[${new Date().toISOString()}] ${msg}`);
       try {
         await this.server.rcon.broadcast(msg);
@@ -226,18 +226,19 @@ export default class KothSeedingPlugin extends DiscordBasePlugin {
     const lerp = (min, max) => min + (max - min) * (level - 1) / 9;
 
     const settings = {
-      "msv timer": 180,
+      "msv timer": lerp(30, 180).toFixed(2),
       "economy": {
         "$ multiplier": 1.5,
-        "xp multiplier": 1
+        "xp multiplier": 1,
+        "weapon xp multiplier": 2
       },
       "zone": {
         "move interval": 300,
         "move fraction": lerp(1, 0.5).toFixed(2),
-        "radius multiplier": lerp(0.6, 1).toFixed(2),
-        "prio radius multiplier": lerp(0.3, 1).toFixed(2),
+        "radius multiplier": lerp(0.7, 1).toFixed(2),
+        "prio radius multiplier": lerp(0.5, 1).toFixed(2),
         "half height": 30000,
-        "reward update interval": 15,
+        "reward update interval": lerp(15, 30).toFixed(2),
         "vehicle can capture": false,
         "prio vehicle can capture": true
       },
@@ -249,24 +250,29 @@ export default class KothSeedingPlugin extends DiscordBasePlugin {
         },
         {
           "name": "Priority Offensive",
-          "xp": Math.round(lerp(600, 200)),
-          "$": Math.round(lerp(600, 200))
+          "xp": Math.round(lerp(400, 200)),
+          "$": Math.round(lerp(400, 200))
         },
         {
           "name": "Priority Defensive",
-          "xp": Math.round(lerp(600, 200)),
-          "$": Math.round(lerp(600, 200))
+          "xp": Math.round(lerp(500, 200)),
+          "$": Math.round(lerp(500, 200))
         },
         {
           "name": "Objective Offensive",
-          "xp": Math.round(lerp(25, 100)),
-          "$": Math.round(lerp(25, 100))
+          "xp": Math.round(lerp(70, 100)),
+          "$": Math.round(lerp(70, 100))
         },
         {
           "name": "Objective Defensive",
-          "xp": Math.round(lerp(30, 100)),
-          "$": Math.round(lerp(30, 100))
-        }
+          "xp": Math.round(lerp(80, 100)),
+          "$": Math.round(lerp(80, 100))
+        },
+        {
+				  "name": "Bot Killed",
+				  "xp": Math.round(lerp(100, 25)),
+				  "$": Math.round(lerp(100, 25)),
+			  }
       ]
     };
     console.log(`[KothSeedingPlugin] Generated settings for level ${level}`);
