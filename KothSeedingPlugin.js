@@ -230,7 +230,7 @@ export default class KothSeedingPlugin extends DiscordBasePlugin {
       "economy": {
         "$ multiplier": 1.5,
         "xp multiplier": 1,
-        "weapon xp multiplier": 2
+        "weapon xp multiplier": 4
       },
       "zone": {
         "move interval": 300,
@@ -238,7 +238,7 @@ export default class KothSeedingPlugin extends DiscordBasePlugin {
         "radius multiplier": lerp(0.7, 1).toFixed(2),
         "prio radius multiplier": lerp(0.5, 1).toFixed(2),
         "half height": 30000,
-        "reward update interval": lerp(15, 30).toFixed(2),
+        "reward update interval": lerp(10, 30).toFixed(2),
         "vehicle can capture": false,
         "prio vehicle can capture": true
       },
@@ -269,10 +269,10 @@ export default class KothSeedingPlugin extends DiscordBasePlugin {
           "$": Math.round(lerp(80, 100))
         },
         {
-				  "name": "Bot Killed",
-				  "xp": Math.round(lerp(100, 25)),
-				  "$": Math.round(lerp(100, 25)),
-			  }
+		  "name": "Bot Killed",
+		  "xp": Math.round(lerp(100, 25)),
+		  "$": Math.round(lerp(100, 25)),
+		}
       ]
     };
     console.log(`[KothSeedingPlugin] Generated settings for level ${level}`);
